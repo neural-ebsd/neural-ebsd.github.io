@@ -1,0 +1,256 @@
+{
+ "schema_version": "2.0",
+ "generated_at": "2026-07-14T08:21:57",
+ "exporter_version": "2.0.0",
+ "id": "rx",
+ "label": "RX Ni superalloy (200\u00d7200 showcase)",
+ "checkpoint": {
+  "file": "RX_fullmap_stride1.pth",
+  "sha256": "35c25e331f8ee1b14a1dce72f60e76b681e94b840ac292d644da90e0163fe569",
+  "best_val": 0.0003760083672981127
+ },
+ "model": {
+  "formulation": "tf-inr",
+  "coeff_mode": "ones_plus_siren",
+  "R": 512,
+  "Hp": 120,
+  "Wp": 120,
+  "layers": [
+   {
+    "type": "sine",
+    "in": 2,
+    "out": 512,
+    "omega": 30.0
+   },
+   {
+    "type": "sine",
+    "in": 512,
+    "out": 512,
+    "omega": 30.0
+   },
+   {
+    "type": "sine",
+    "in": 512,
+    "out": 512,
+    "omega": 30.0
+   },
+   {
+    "type": "sine",
+    "in": 512,
+    "out": 512,
+    "omega": 30.0
+   },
+   {
+    "type": "sine",
+    "in": 512,
+    "out": 512,
+    "omega": 30.0
+   },
+   {
+    "type": "linear",
+    "in": 512,
+    "out": 511,
+    "omega": 0.0
+   }
+  ],
+  "input_order": [
+   "x",
+   "y"
+  ]
+ },
+ "grid": {
+  "Ny": 200,
+  "Nx": 200,
+  "Ny_full": 900,
+  "Nx_full": 1000,
+  "crop": {
+   "iy0": 152,
+   "ix0": 592
+  },
+  "coord_box": {
+   "x_lo": 0.18518518518518512,
+   "x_hi": 0.5835835835835836,
+   "y_lo": -0.6618464961067854,
+   "y_hi": -0.2191323692992213
+  },
+  "coord_convention": "global linspace(-1,1,N_full); iy=0 top row; input [x,y]",
+  "roi_scan": {
+   "y0": 0,
+   "y1": 900,
+   "x0": 0,
+   "x1": 1000
+  },
+  "stride": 1
+ },
+ "scaler": {
+  "data_min": 7674.0,
+  "data_max": 61183.0,
+  "target_min": -1.0,
+  "target_max": 1.0,
+  "scale": 3.7376889868994e-05,
+  "bias": -1.28683025285466
+ },
+ "files": {
+  "weights": {
+   "path": "siren_weights.bin",
+   "dtype": "float32",
+   "n_params": 1314303
+  },
+  "basis": {
+   "path": "basis_B.bin",
+   "dtype": "float16",
+   "shape": [
+    512,
+    120,
+    120
+   ],
+   "fp16_max_pattern_err": 0.0002765655517578125
+  },
+  "mask": {
+   "path": "mask.png"
+  },
+  "nav_map": {
+   "path": "nav_map.png",
+   "note": "mean masked intensity, p1-p99"
+  },
+  "s_map": {
+   "path": "s_map.bin",
+   "shape": [
+    600,
+    600
+   ],
+   "supersample": 3,
+   "preview": "s_map_preview.png",
+   "definition": "analytic Frobenius Jacobian, normalized coords",
+   "p1": 60.389705657958984,
+   "p99": 1323.410400390625
+  },
+  "mae": {
+   "path": "mae.bin",
+   "shape": [
+    200,
+    200
+   ],
+   "units": "normalized [-1,1] space",
+   "stats": {
+    "min": 0.011418881826102734,
+    "mean": 0.013092904351651669,
+    "max": 0.09697313606739044,
+    "mean_pct_of_range": 0.6546452045440674
+   }
+  },
+  "pca_rgb": {
+   "path": "pca_rgb.png",
+   "n_components": 3,
+   "explained_variance": [
+    0.18231827020645142,
+    0.14001701772212982,
+    0.12291751801967621
+   ]
+  },
+  "tiles": {
+   "dir": "tiles",
+   "tile_size": 20,
+   "rows": 10,
+   "cols": 10,
+   "format": "webp",
+   "quantization": "per-pattern min/max 8-bit",
+   "tile_q": 90
+  },
+  "showcase": {
+   "patterns": [
+    {
+     "file": "showcase/sc_0.png",
+     "iy": 0,
+     "ix": 0,
+     "x": 0.18518518518518512,
+     "y": -0.6618464961067854,
+     "pmin": -0.8257116079330444,
+     "pmax": 0.7449773550033569,
+     "label": "(0,0)"
+    },
+    {
+     "file": "showcase/sc_1.png",
+     "iy": 0,
+     "ix": 199,
+     "x": 0.5835835835835836,
+     "y": -0.6618464961067854,
+     "pmin": -0.8281785249710083,
+     "pmax": 0.7177671194076538,
+     "label": "(0,199)"
+    },
+    {
+     "file": "showcase/sc_2.png",
+     "iy": 199,
+     "ix": 0,
+     "x": 0.18518518518518512,
+     "y": -0.2191323692992213,
+     "pmin": -0.8090789318084717,
+     "pmax": 0.6989290714263916,
+     "label": "(199,0)"
+    },
+    {
+     "file": "showcase/sc_3.png",
+     "iy": 199,
+     "ix": 199,
+     "x": 0.5835835835835836,
+     "y": -0.2191323692992213,
+     "pmin": -0.7931936979293823,
+     "pmax": 0.7306245565414429,
+     "label": "(199,199)"
+    },
+    {
+     "file": "showcase/sc_4.png",
+     "iy": 100,
+     "ix": 100,
+     "x": 0.38538538538538547,
+     "y": -0.439377085650723,
+     "pmin": -0.8062756061553955,
+     "pmax": 0.7283445596694946,
+     "label": "(100,100)"
+    },
+    {
+     "file": "showcase/sc_5.png",
+     "iy": 100,
+     "ix": 50,
+     "x": 0.2852852852852852,
+     "y": -0.439377085650723,
+     "pmin": -0.8062756061553955,
+     "pmax": 0.787101149559021,
+     "label": "(100,50)"
+    },
+    {
+     "file": "showcase/sc_6.png",
+     "iy": 100,
+     "ix": 150,
+     "x": 0.48548548548548554,
+     "y": -0.439377085650723,
+     "pmin": -0.8076585531234741,
+     "pmax": 0.7505091428756714,
+     "label": "(100,150)"
+    }
+   ]
+  }
+ },
+ "stats": {
+  "raw_roi_bytes": 25920000000,
+  "crop_raw_bytes": 1152000000,
+  "model_bytes": 20002812,
+  "compression_ratio": 57.59,
+  "compression_ratio_fullmap": 1295.82,
+  "paper_reference_ratio": "\u2248715\u00d7 for the full manuscript datasets"
+ },
+ "fixtures": {
+  "path": "fixtures.json",
+  "tolerances": {
+   "coeff_abs": 0.001,
+   "pattern_abs": 0.005,
+   "s_rel": 0.001
+  }
+ },
+ "caveats": [
+  "S(x,y) includes all sources of pattern change; it is not misorientation angle.",
+  "Displayed GT patterns are 8-bit + WebP quantized for transport; quantitative MAE was computed offline in float32.",
+  "This demo shows a cropped 200x200 showcase ROI of the full 900x1000 map."
+ ]
+}

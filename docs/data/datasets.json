@@ -1,0 +1,8 @@
+[
+ {
+  "id": "rx",
+  "label": "RX Ni superalloy (200\u00d7200 showcase)",
+  "path": "rx/",
+  "default": true
+ }
+]

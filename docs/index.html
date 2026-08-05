@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Neural EBSD</title>
+    <meta name="description" content="Interactive demo of a Tensor-Factorized Implicit Neural Representation of EBSD Kikuchi patterns: continuous off-grid reconstruction and the analytic diffraction gradient field." />
+    <!-- Open Graph needs ABSOLUTE urls — crawlers do not resolve relative paths and do
+         not run JS, so these cannot be filled from src/links.ts. Keep the origin in sync
+         with SITE_URL there if the demo ever moves. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://neural-ebsd.github.io/" />
+    <meta property="og:title" content="Neural EBSD" />
+    <meta property="og:description" content="Continuous neural reconstruction of Kikuchi patterns and the analytic diffraction gradient field." />
+    <meta property="og:image" content="https://neural-ebsd.github.io/og.png" />
+    <meta property="og:image:alt" content="Neural EBSD Explorer — specimen-domain map beside measured and reconstructed Kikuchi patterns." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Neural EBSD" />
+    <meta name="twitter:description" content="Continuous neural reconstruction of Kikuchi patterns and the analytic diffraction gradient field." />
+    <meta name="twitter:image" content="https://neural-ebsd.github.io/og.png" />
+    <link rel="canonical" href="https://neural-ebsd.github.io/" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23202428'/%3E%3Ccircle cx='11' cy='11' r='7' fill='%23008BFF'/%3E%3Ccircle cx='21' cy='21' r='7' fill='%23FF007F'/%3E%3C/svg%3E" />
+    <script type="module" crossorigin src="./assets/index-C6muHMAb.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Cc-AdGrd.css">
+  </head>
+  <body>
+    <div id="app" data-tool="probe">
+      <!-- ===================== Header ===================== -->
+      <header id="header">
+        <div class="brand">
+          <span class="logo" aria-hidden="true"></span>
+          <h1>Neural EBSD <span class="h1-sub">Explorer</span></h1>
+        </div>
+        <!-- Centred between brand and controls: it is the claim the demo makes, not a
+             control, so it sits on its own rather than in the button cluster. -->
+        <span id="compression-badge" class="badge" title="Model size vs raw ROI">—</span>
+        <div class="header-controls">
+          <select id="dataset-switcher" class="hidden" aria-label="Dataset"></select>
+          <button id="btn-tour" class="btn ghost">Guided tour</button>
+          <button id="btn-about" class="btn ghost">About</button>
+          <!-- href/label populated from src/links.ts; hidden if nothing is published yet -->
+          <a id="paper-link" class="btn ghost hidden" target="_blank" rel="noopener">Paper</a>
+        </div>
+      </header>
+
+      <!-- ===================== Loading overlay ===================== -->
+      <div id="loader" class="loader">
+        <div class="loader-card">
+          <div class="loader-title">Loading model…</div>
+          <div class="progress"><div id="progress-bar" class="progress-bar"></div></div>
+          <div id="progress-label" class="progress-label mono">manifest…</div>
+          <div id="loader-note" class="progress-label"></div>
+        </div>
+      </div>
+
+      <!-- ===================== Main two-pane layout ===================== -->
+      <main id="main">
+        <!-- LEFT: specimen domain -->
+        <section class="pane pane-map">
+          <div class="pane-head">
+            <h2>Specimen domain <span class="coords">(x, y)</span> <span id="crop-note" class="dim crop-note"></span></h2>
+            <div class="layer-tabs" id="layer-tabs" role="tablist">
+              <button class="tab" data-layer="nav">Mean intensity</button>
+              <button class="tab active" data-layer="pca">PCA-RGB</button>
+              <button class="tab" data-layer="smap">Diffraction gradient S</button>
+              <!-- pushed right: the other three are views of the microstructure, this one
+                   is reconstruction error — a different kind of quantity -->
+              <button class="tab" data-layer="mae">MAE map</button>
+            </div>
+          </div>
+          <div class="map-wrap">
+            <canvas id="map-canvas" role="img" aria-label="Specimen-domain map. Click or drag to move the probe; arrow keys nudge it between measurement nodes."></canvas>
+            <canvas id="map-overlay" aria-hidden="true"></canvas>
+            <button id="zoom-reset" class="zoom-reset hidden" title="Reset zoom (or double-click)">⤢ reset</button>
+          </div>
+          <div id="map-legend" class="map-legend"></div>
+          <div class="map-tools">
+            <div class="toolgroup">
+              <button class="tool-btn active" data-tool="probe" title="Continuous probe">◎ Probe</button>
+              <button class="tool-btn" data-tool="path" title="Sample along a path">╱ Path</button>
+            </div>
+            <label class="chk"><input type="checkbox" id="chk-snap" /> Snap</label>
+            <label class="chk"><input type="checkbox" id="chk-grid" /> Grid</label>
+            <span class="kbd-hint dim">arrows move · <b>G</b> snap</span>
+          </div>
+          <!-- Path controls (hidden unless path tool) -->
+          <div id="path-panel" class="path-panel hidden">
+            <div class="path-row">
+              <span class="path-hint" id="path-hint">Click <b class="a">A</b>, then <b class="b">B</b> on the map.</span>
+              <label class="path-steps">Steps <input type="range" id="path-steps" min="64" max="512" step="64" value="128" /><span id="path-steps-val" class="mono">128</span></label>
+            </div>
+            <div class="path-row">
+              <button id="path-play" class="btn small">▶ Play</button>
+              <input type="range" id="path-scrub" min="0" max="1" step="0.001" value="0" class="scrub" />
+              <span id="path-t" class="mono">t=0.00</span>
+              <button id="path-clear" class="btn small ghost">Clear</button>
+            </div>
+            <div class="path-chart-wrap">
+              <div class="chart-title">S(t) along path <span class="dim">— analytic; dashed = geometric midpoint</span></div>
+              <div id="path-chart"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- RIGHT column: detector domain + basis gallery -->
+        <div class="right-col">
+        <section class="pane pane-detector">
+          <div class="pane-head">
+            <h2>Detector domain <span class="coords">(u, v)</span> <span id="det-note" class="dim crop-note"></span></h2>
+            <div class="detector-toggles">
+              <select id="cmap-select" aria-label="Pattern colormap">
+                <option value="viridis" selected>viridis</option>
+                <option value="gray">gray</option>
+                <option value="inferno">inferno</option>
+                <option value="magma">magma</option>
+              </select>
+            </div>
+          </div>
+          <div class="triplet">
+            <figure><figcaption>Measured <span id="gt-ghost-tag" class="tag hidden">nearest</span></figcaption><canvas id="gt-canvas" class="pat" role="img" aria-label="Measured Kikuchi pattern at the nearest measurement node"></canvas></figure>
+            <figure><figcaption>Reconstruction <span class="tag">from TF-INR</span></figcaption><canvas id="recon-canvas" class="pat" role="img" aria-label="Kikuchi pattern reconstructed by the TF-INR at the probe position"></canvas></figure>
+            <figure><figcaption>|difference| <span class="tag warn">display-quantized</span></figcaption><canvas id="diff-canvas" class="pat" role="img" aria-label="Absolute difference between the measured and reconstructed patterns"></canvas></figure>
+          </div>
+          <div class="metrics">
+            <div class="metric">
+              <div class="metric-label">MAE <span id="mae-source" class="dim"></span></div>
+              <div class="metric-value mono" id="mae-value"><span id="mae-counts" class="metric-num">—</span><span class="metric-unit">counts</span> · <span id="mae-pct" class="metric-num">—</span><span class="metric-unit">of max</span></div>
+            </div>
+            <div class="metric metric-probe">
+              <div class="metric-label">Probe</div>
+              <div class="metric-value-sm mono"><span id="ib-state" class="state">—</span> <span id="ib-ms">—</span> ms</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Gradient S <button id="s-help" class="help-btn" title="How is S computed?">?</button></div>
+              <div class="metric-value mono live"><span id="s-value">—</span></div>
+            </div>
+          </div>
+          <div class="infobar mono" id="infobar">
+            <span>grid <b id="ib-grid">—</b></span>
+            <span>norm <b id="ib-norm">—</b></span>
+            <span title="Nearest measurement node, indexed in the full scan — the coordinates the Python code and the manuscript use">node <b id="ib-full">—</b></span>
+            <span class="featured"><select id="featured-select" aria-label="Jump to point">
+              <option value="" disabled selected>Jump to…</option>
+              <option value="__node__">⌖ Enter node (iy, ix)…</option>
+            </select><span id="node-entry" class="node-entry hidden"><input id="node-input" type="text" inputmode="numeric" size="9" aria-label="Node as iy, ix in full-scan indices" /><button id="node-go" class="btn small">Go</button></span></span>
+          </div>
+        </section>
+
+        <div class="card basis-card">
+          <div class="basis-head">
+            <h3>Basis patterns B<sub>r</sub>(u,v) <span class="dim">— under the hood</span></h3>
+            <span id="basis-range" class="mono dim">scroll →</span>
+          </div>
+          <div id="basis-grid" class="basis-grid"></div>
+        </div>
+        </div><!-- /right-col -->
+      </main>
+
+      <!-- ===================== Footer identity strip ===================== -->
+      <footer id="footer">
+        <a id="lab-link" target="_blank" rel="noopener">Materials Informatics Lab</a>
+        <span class="sep" aria-hidden="true">·</span>
+        <span>University of Arizona</span>
+        <!-- Paper / arXiv / Code are inserted immediately before #refs-end by renderLinks()
+             in src/links.ts. Entries with no URL are omitted entirely, so there is never a
+             dead link — which is also why this separator is a fixed anchor, not part of the
+             generated run. -->
+        <span class="sep" aria-hidden="true" id="refs-end">·</span>
+        <!-- Opens About scrolled to "Credits & terms" rather than linking out, so it works
+             before the repo URL is published and can never become a dead link. -->
+        <button id="btn-license" class="footer-link" aria-haspopup="dialog">License</button>
+        <span class="sep" aria-hidden="true">·</span>
+        <button id="btn-cite" class="footer-link" aria-haspopup="dialog" aria-expanded="false">Cite</button>
+      </footer>
+    </div>
+
+    <div id="cite-popover" class="popover hidden" role="dialog" aria-modal="false" aria-labelledby="cite-title">
+      <button class="popover-close" id="cite-popover-close" aria-label="Close">×</button>
+      <h4 id="cite-title">Cite this work</h4>
+      <!-- generated by bibtex() in src/links.ts -->
+      <pre id="cite-bibtex" class="bibtex mono"></pre>
+      <button id="cite-copy" class="btn small">Copy BibTeX</button>
+    </div>
+
+    <!-- ===================== Modals / popovers ===================== -->
+    <div id="about-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="about-title">
+      <div class="modal-card">
+        <button class="modal-close" id="about-close" aria-label="Close">×</button>
+        <h2 id="about-title">About this demo</h2>
+        <div id="about-body"></div>
+      </div>
+    </div>
+
+    <div id="basis-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="basis-modal-title">
+      <div class="modal-card basis-modal-card">
+        <button class="modal-close" id="basis-modal-close" aria-label="Close">×</button>
+        <h2 id="basis-modal-title">Basis pattern</h2>
+        <canvas id="basis-modal-canvas" class="pat basis-modal-canvas" role="img" aria-label="Enlarged learned basis pattern"></canvas>
+        <div id="basis-modal-legend" class="map-legend"></div>
+        <p id="basis-modal-note" class="dim basis-modal-note"></p>
+      </div>
+    </div>
+
+    <div id="s-popover" class="popover hidden">
+      <button class="popover-close" id="s-popover-close" aria-label="Close">×</button>
+      <h4>Diffraction gradient field S(x,y)</h4>
+      <p class="mono formula">S = ‖∇<sub>(x,y)</sub>A‖<sub>F</sub> = √( Σ<sub>r</sub> [ (∂A<sub>r</sub>/∂x)² + (∂A<sub>r</sub>/∂y)² ] )</p>
+      <p>Computed live from the SIREN Jacobian by forward-mode differentiation — the same
+        analytic formula used for the precomputed field, evaluated exactly at the probe.</p>
+      <ul>
+        <li>S has <b>no absolute physical scale</b>; compare only within this map.</li>
+        <li>S <b>conflates all sources of pattern change</b> (orientation, band sharpness, contrast) — it is <b>not</b> misorientation angle.</li>
+      </ul>
+    </div>
+
+    <div id="embed-focus" class="embed-focus hidden">Click to control · Esc to release</div>
+
+  </body>
+</html>
